@@ -13,8 +13,8 @@ import com.powsybl.contingency.ContingencyContext;
 import com.powsybl.iidm.export.Exporters;
 import com.powsybl.iidm.import_.Importer;
 import com.powsybl.iidm.import_.Importers;
-import com.powsybl.iidm.network.Country;
-import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.*;
+import com.powsybl.iidm.parameters.ParameterType;
 import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
@@ -38,10 +38,7 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.PointerBase;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.powsybl.python.CTypeUtil.toStringList;
@@ -514,7 +511,7 @@ public final class PyPowsyblApiLib {
 
     @CEntryPoint(name = "freeArray")
     public static <T extends PointerBase> void freeArray(IsolateThread thread, ArrayPointer<T> arrayPointer,
-                                                                ExceptionHandlerPointer exceptionHandlerPtr) {
+                                                         ExceptionHandlerPointer exceptionHandlerPtr) {
         UnmanagedMemory.free(arrayPointer.getPtr());
         UnmanagedMemory.free(arrayPointer);
     }
@@ -610,5 +607,63 @@ public final class PyPowsyblApiLib {
     @CEntryPoint(name = "freeString")
     public static void freeString(IsolateThread thread, CCharPointer string, ExceptionHandlerPointer exceptionHandlerPtr) {
         doCatch(exceptionHandlerPtr, () -> UnmanagedMemory.free(string));
+    }
+
+    @CEntryPoint(name = "getEnumValues")
+    public static ArrayPointer<CCharPointerPointer> getEnumValues(IsolateThread thread, CCharPointer enumClass, ExceptionHandlerPointer exceptionHandlerPtr) {
+        return doCatch(exceptionHandlerPtr, () -> {
+            ArrayPointer<CCharPointerPointer> calloc;
+            String enumClassString = CTypeUtil.toString(enumClass);
+            switch (enumClassString) {
+                case "country":
+                    calloc = createEnumList(Country.values());
+                    break;
+                case "branch_side":
+                    calloc = createEnumList(Branch.Side.values());
+                    break;
+                case "three_windings_transformer_side":
+                    calloc = createEnumList(ThreeWindingsTransformer.Side.values());
+                    break;
+                case "energy_source":
+                    calloc = createEnumList(EnergySource.values());
+                    break;
+                case "phase_tap_changer_regulation_mode":
+                    calloc = createEnumList(PhaseTapChanger.RegulationMode.values());
+                    break;
+                case "static_var_compensator_regulation_mode":
+                    calloc = createEnumList(StaticVarCompensator.RegulationMode.values());
+                    break;
+                case "shunt_compensator_model_type":
+                    calloc = createEnumList(ShuntCompensatorModelType.values());
+                    break;
+                case "load_type":
+                    calloc = createEnumList(LoadType.values());
+                    break;
+                case "switch_kind":
+                    calloc = createEnumList(SwitchKind.values());
+                    break;
+                case "converters_mode":
+                    calloc = createEnumList(HvdcLine.ConvertersMode.values());
+                    break;
+                case "limit_type":
+                    calloc = createEnumList(LimitType.values());
+                    break;
+                case "parameter_type":
+                    calloc = createEnumList(ParameterType.values());
+                    break;
+                default:
+                    throw new PowsyblException(String.format("Enum class %s does not exist", enumClassString));
+            }
+            return calloc;
+        });
+    }
+
+    private static <T> ArrayPointer<CCharPointerPointer> createEnumList(T[] enumList) {
+        int size = enumList.length;
+        CCharPointerPointer calloc = UnmanagedMemory.calloc(size * SizeOf.get(CCharPointerPointer.class));
+        for (int i = 0; i < size; i++) {
+            calloc.write(i, CTypeUtil.toCharPtr(enumList[i].toString()));
+        }
+        return allocArrayPointer(calloc, size);
     }
 }

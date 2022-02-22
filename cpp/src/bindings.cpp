@@ -29,7 +29,7 @@ void deleteDataframe(dataframe* df) {
             pypowsybl::deleteCharPtrPtr((char**) column->data.ptr, column->data.length);
         } else if (column->type == 1) {
             delete[] (double*) column->data.ptr;
-        } else if (column->type == 2 || column->type == 3) {
+        } else if (column->type == 2 || column->type == 3 || column->type == 4) {
             delete[] (int*) column->data.ptr;
         }
         delete[] column->name;
@@ -57,7 +57,7 @@ std::shared_ptr<dataframe> createDataframe(py::list columnsValues, const std::ve
             std::vector<double> values = py::cast<std::vector<double>>(columnsValues[indice]);
             column->data.length = values.size();
             column->data.ptr = pypowsybl::copyVectorDouble(values);
-        } else if (type == 2 || type == 3) {
+        } else if (type == 2 || type == 3 || type == 4) {
             std::vector<int> values = py::cast<std::vector<int>>(columnsValues[indice]);
             column->data.length = values.size();
             column->data.ptr = pypowsybl::copyVectorInt(values);
@@ -503,6 +503,8 @@ PYBIND11_MODULE(_pypowsybl, m) {
                         return seriesAsNumpyArray<int>(s);
                     case 3:
                         return seriesAsNumpyArray<bool>(s);
+                    case 4:
+                        return seriesAsNumpyArray<int>(s);
                     default:
                         throw pypowsybl::PyPowsyblError("Series type not supported: " + std::to_string(s.type));
                 }
@@ -510,12 +512,13 @@ PYBIND11_MODULE(_pypowsybl, m) {
     bindArray<pypowsybl::SeriesArray>(m, "SeriesArray");
 
     py::class_<pypowsybl::SeriesMetadata>(m, "SeriesMetadata", "Metadata about one series")
-            .def(py::init<const std::string&, int, bool, bool, bool>())
+            .def(py::init<const std::string&, int, bool, bool, bool, const std::string&>())
             .def_property_readonly("name", &pypowsybl::SeriesMetadata::name, "Name of this series.")
             .def_property_readonly("type", &pypowsybl::SeriesMetadata::type)
             .def_property_readonly("is_index", &pypowsybl::SeriesMetadata::isIndex)
             .def_property_readonly("is_modifiable", &pypowsybl::SeriesMetadata::isModifiable)
-            .def_property_readonly("is_default", &pypowsybl::SeriesMetadata::isDefault);
+            .def_property_readonly("is_default", &pypowsybl::SeriesMetadata::isDefault)
+            .def_property_readonly("enum_class", &pypowsybl::SeriesMetadata::enumClass);
 
     m.def("get_network_elements_dataframe_metadata", &pypowsybl::getNetworkDataframeMetadata, "Get dataframe metadata for a given network element type",
           py::arg("element_type"));
@@ -566,4 +569,5 @@ PYBIND11_MODULE(_pypowsybl, m) {
     m.def("get_three_windings_transformer_results", &pypowsybl::getThreeWindingsTransformerResults,
           "create a table with all three windings transformer results computed after security analysis", py::arg("result"));
     m.def("create_element", ::createElement, "create a new element on the network", py::arg("network"),  py::arg("dataframes"),  py::arg("elementType"));
+    m.def("get_enum_values", &pypowsybl::getEnumValues, "get enum existing values", py::arg("enum_class"));
 }

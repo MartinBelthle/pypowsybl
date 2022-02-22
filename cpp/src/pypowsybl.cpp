@@ -617,7 +617,7 @@ std::vector<SeriesMetadata> convertDataframeMetadata(dataframe_metadata* datafra
     std::vector<SeriesMetadata> res;
     for (int i = 0; i < dataframeMetadata->attributes_count; i++) {
         const series_metadata& series = dataframeMetadata->attributes_metadata[i];
-        res.push_back(SeriesMetadata(series.name, series.type, series.is_index, series.is_modifiable, series.is_default));
+        res.push_back(SeriesMetadata(series.name, series.type, series.is_index, series.is_modifiable, series.is_default, series.enum_class));
     }
     return res;
 }
@@ -645,4 +645,9 @@ void createElement(pypowsybl::JavaHandle network, dataframe_array* dataframes, e
     pypowsybl::callJava<>(::createElement, network, elementType, dataframes);
 }
 
+std::vector<std::string> getEnumValues(std::string& enumClass) {
+    auto enumValuesPtr = callJava<array*>(::getEnumValues, (char*) enumClass.c_str());
+    ToStringVector formats(enumValuesPtr);
+    return formats.get();
+}
 }
