@@ -7,6 +7,7 @@
 import pandas as pd
 import pytest
 
+import pypowsybl.network
 import pypowsybl.network as pn
 import util
 import pathlib
@@ -283,7 +284,8 @@ def test_phase_tap_changers_creation():
     n = pn.create_four_substations_node_breaker_network()
     n.create_2_windings_transformers(pd.DataFrame.from_records(
         index='id',
-        columns=['id', 'r', 'x', 'g', 'b', 'rated_u1', 'rated_u2', 'voltage_level1_id', 'voltage_level2_id', 'node1', 'node2'],
+        columns=['id', 'r', 'x', 'g', 'b', 'rated_u1', 'rated_u2', 'voltage_level1_id', 'voltage_level2_id', 'node1',
+                 'node2'],
         data=[['TWT_TEST', 0.1, 10, 1, 0.1, 400, 158, 'S1VL1', 'S1VL2', 1, 2]]))
     n.create_phase_tap_changers(pd.DataFrame(index=pd.Series(name='id', data=['TWT_TEST']),
                                              columns=['target_deadband', 'regulation_mode', 'low_tap', 'tap'],
@@ -567,3 +569,22 @@ def test_create_node_breaker_network_and_run_loadflow():
     assert line.q2 == pytest.approx(-10, abs=1e-2)
     assert line.p1 == pytest.approx(100, abs=1e-1)
     assert line.q1 == pytest.approx(9.7, abs=1e-1)
+
+
+def test_delete_elements():
+    pypowsybl.set_debug_mode(True)
+    net = pypowsybl.network.create_eurostag_tutorial_example1_network()
+    net.remove_elements(['GEN', 'GEN2'])
+    assert net.get_generators().empty
+    net.remove_elements(['NHV1_NHV2_1', 'NHV1_NHV2_2'])
+    assert net.get_lines().empty
+    net.remove_elements(['NHV2_NLOAD', 'NGEN_NHV1'])
+    assert net.get_2_windings_transformers().empty
+    net.remove_elements('LOAD')
+    assert net.get_loads().empty
+    net = pypowsybl.network.create_eurostag_tutorial_example1_network()
+    net.remove_elements(['GEN', 'GEN2', 'NHV1_NHV2_1', 'NHV1_NHV2_2', 'NHV2_NLOAD', 'NGEN_NHV1', 'LOAD'])
+    assert net.get_generators().empty
+    assert net.get_lines().empty
+    assert net.get_2_windings_transformers().empty
+    assert net.get_loads().empty
